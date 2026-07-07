@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fibonacci Spiral Generator</title>
+
+<!--
+  ============================================================================
+  Fibonacci Spiral Generator
+  ============================================================================
+  A single, self-contained HTML page (no build step, no dependencies) that
+  draws a Fibonacci spiral on a full-window <canvas> and lets you tweak it
+  live through a floating, collapsible control panel.
+
+  HOW IT WORKS
+  ------------
+  The spiral is built from the Fibonacci sequence (1, 1, 2, 3, 5, 8, ...).
+  Each number becomes a square, and each square contributes one quarter-circle
+  arc. Consecutive arcs join smoothly because their centers lie on the same
+  radial line, so the endpoint and tangent stay continuous. See buildGeometry().
+
+  Geometry is computed once in abstract "world units", then a single fit/scale/
+  rotate transform maps it to the screen (see layout()) or to a cropped canvas
+  for export (see exportLayout()). Both the on-screen canvas and the SVG export
+  share the exact same layout math and label positions, so what you see is what
+  you get in either output format.
+
+  FEATURES
+  --------
+    - Live controls: segment count, scale, line width, rotation, winding
+      direction, spiral gradient colors, background, tiling squares.
+    - Fibonacci numbers can be placed along the curve or inside the squares,
+      at a fixed size or scaled to each square.
+    - Transparent background option (real alpha in PNG/SVG exports).
+    - Export to PNG (raster, 2x) or SVG (true vector), each cropped to the
+      drawing's own aspect ratio.
+
+  No external libraries. Everything below is plain HTML, CSS and JavaScript.
+  ============================================================================
+-->
+<style>
+  :root {
+    --panel-bg: rgba(24, 26, 32, 0.88);
+    --panel-border: rgba(255, 255, 255, 0.12);
+    --text: #e8eaf0;
+    --text-dim: #9aa0ae;
+    --accent: #4f9dff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #111;
+  }
+  #canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* ---------- Floating control panel ---------- */
+  #panel {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 300px;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    user-select: none;
+    z-index: 10;
+  }
+  #panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+  }
+  #panel-header .chevron { transition: transform 0.2s; color: var(--text-dim); }
+  #panel.collapsed .chevron { transform: rotate(-90deg); }
+  #panel-body {
+    overflow-y: auto;
+    padding: 4px 14px 14px;
+    scrollbar-width: thin;
+  }
+  #panel.collapsed #panel-body { display: none; }
+
+  .group {
+    border-top: 1px solid var(--panel-border);
+    padding-top: 10px;
+    margin-top: 10px;
+  }
+  .group:first-child { border-top: none; margin-top: 0; padding-top: 4px; }
+  .group-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .row label { flex: 0 0 auto; }
+  .row .value {
+    min-width: 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+    min-width: 0;
+  }
+  input[type="color"] {
+    width: 34px;
+    height: 24px;
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    background: none;
+    padding: 1px;
+    cursor: pointer;
+  }
+  select {
+    background: #23262e;
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 13px;
+  }
+
+  /* ---------- Switch ---------- */
+  .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex: 0 0 auto; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider-sw {
+    position: absolute; inset: 0;
+    background: #3a3f4b;
+    border-radius: 22px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .slider-sw::before {
+    content: "";
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .switch input:checked + .slider-sw { background: var(--accent); }
+  .switch input:checked + .slider-sw::before { transform: translateX(18px); }
+
+  button.action {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.action:hover { filter: brightness(1.1); }
+  button.action.secondary { background: #3a3f4b; }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="panel">
+  <div id="panel-header" title="Click to collapse/expand">
+    <span>Fibonacci Spiral</span>
+    <span class="chevron">&#9660;</span>
+  </div>
+  <div id="panel-body">
+
+    <div class="group">
+      <div class="group-title">Shape</div>
+      <div class="row">
+        <label for="terms">Segments</label>
+        <input type="range" id="terms" min="3" max="18" step="1" value="10">
+        <span class="value" id="terms-val">10</span>
+      </div>
+      <div class="row">
+        <label for="zoom">Scale</label>
+        <input type="range" id="zoom" min="0.2" max="3" step="0.05" value="1">
+        <span class="value" id="zoom-val">1.00</span>
+      </div>
+      <div class="row">
+        <label for="linewidth">Line width</label>
+        <input type="range" id="linewidth" min="1" max="14" step="0.5" value="3">
+        <span class="value" id="linewidth-val">3</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Orientation</div>
+      <div class="row">
+        <label for="rotation">Rotation</label>
+        <input type="range" id="rotation" min="0" max="360" step="1" value="0">
+        <span class="value" id="rotation-val">0&deg;</span>
+      </div>
+      <div class="row">
+        <label for="direction">Winding</label>
+        <select id="direction">
+          <option value="cw" selected>Clockwise</option>
+          <option value="ccw">Counter-clockwise</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Colors</div>
+      <div class="row">
+        <label for="color-start">Spiral start</label>
+        <input type="color" id="color-start" value="#ffb340">
+      </div>
+      <div class="row">
+        <label for="color-end">Spiral end</label>
+        <input type="color" id="color-end" value="#4f9dff">
+      </div>
+      <div class="row">
+        <label for="color-bg">Background</label>
+        <input type="color" id="color-bg" value="#14161c">
+      </div>
+      <div class="row">
+        <label>Transparent bg</label>
+        <label class="switch">
+          <input type="checkbox" id="bg-transparent">
+          <span class="slider-sw"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Squares</div>
+      <div class="row">
+        <label>Show squares</label>
+        <label class="switch">
+          <input type="checkbox" id="show-squares" checked>
+          <span class="slider-sw"></span>
+        </label>
+      </div>
+      <div class="row">
+        <label for="color-squares">Square color</label>
+        <input type="color" id="color-squares" value="#3a4152">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-title">Numbers</div>
+      <div class="row">
+        <label>Show numbers</label>
+        <label class="switch">
+          <input type="checkbox" id="show-numbers" checked>
+          <span class="slider-sw"></span>
+        </label>
+      </div>
+      <div class="row">
+        <label for="num-placement">Placement</label>
+        <select id="num-placement">
+          <option value="curve">Along curve</option>
+          <option value="squares" selected>In squares</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Scale with size</label>
+        <label class="switch">
+          <input type="checkbox" id="num-scale">
+          <span class="slider-sw"></span>
+        </label>
+      </div>
+      <div class="row">
+        <label for="fontsize">Font size</label>
+        <input type="range" id="fontsize" min="8" max="36" step="1" value="15">
+        <span class="value" id="fontsize-val">15</span>
+      </div>
+      <div class="row">
+        <label for="color-numbers">Number color</label>
+        <input type="color" id="color-numbers" value="#ffffff">
+      </div>
+    </div>
+
+    <div class="group">
+      <button class="action" id="download">Download PNG</button>
+      <button class="action" id="download-svg">Download SVG</button>
+      <button class="action secondary" id="reset">Reset defaults</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  // ---------- Controls ----------
+  const defaults = {
+    terms: 10, zoom: 1, linewidth: 3, rotation: 0, direction: "cw",
+    "color-start": "#ffb340", "color-end": "#4f9dff", "color-bg": "#14161c",
+    "bg-transparent": false,
+    "show-squares": true, "color-squares": "#3a4152",
+    "show-numbers": true, "num-placement": "squares", "num-scale": false,
+    fontsize: 15, "color-numbers": "#ffffff"
+  };
+
+  const el = id => document.getElementById(id);
+
+  function readParams() {
+    return {
+      terms: +el("terms").value,
+      zoom: +el("zoom").value,
+      lineWidth: +el("linewidth").value,
+      rotation: +el("rotation").value * Math.PI / 180,
+      ccw: el("direction").value === "ccw",
+      colorStart: el("color-start").value,
+      colorEnd: el("color-end").value,
+      colorBg: el("color-bg").value,
+      bgTransparent: el("bg-transparent").checked,
+      showSquares: el("show-squares").checked,
+      colorSquares: el("color-squares").value,
+      showNumbers: el("show-numbers").checked,
+      numPlacement: el("num-placement").value,
+      scaleNumbers: el("num-scale").checked,
+      fontSize: +el("fontsize").value,
+      colorNumbers: el("color-numbers").value
+    };
+  }
+
+  function updateValueLabels() {
+    el("terms-val").textContent = el("terms").value;
+    el("zoom-val").textContent = (+el("zoom").value).toFixed(2);
+    el("linewidth-val").textContent = el("linewidth").value;
+    el("rotation-val").innerHTML = el("rotation").value + "&deg;";
+    el("fontsize-val").textContent = el("fontsize").value;
+  }
+
+  // ---------- Fibonacci geometry (in abstract world units) ----------
+  function fibonacci(n) {
+    const f = [1, 1];
+    while (f.length < n) f.push(f[f.length - 1] + f[f.length - 2]);
+    return f.slice(0, n);
+  }
+
+  // Each segment is a quarter-circle arc. Consecutive arcs share the same
+  // tangent point because both centers lie on the same radial line.
+  function buildGeometry(n, ccw) {
+    const fibs = fibonacci(n);
+    const s = ccw ? -1 : 1;            // angular direction sign
+    const HALF_PI = Math.PI / 2;
+    const arcs = [];
+    let cx = 0, cy = 0, angle = 0;
+
+    for (let i = 0; i < n; i++) {
+      const r = fibs[i];
+      const a0 = angle;
+      const a1 = angle + s * HALF_PI;
+      // Square spanned by the two radial unit vectors of this quadrant
+      const ux = Math.cos(a0), uy = Math.sin(a0);
+      const vx = Math.cos(a1), vy = Math.sin(a1);
+      arcs.push({
+        cx, cy, r, a0, a1, fib: fibs[i],
+        square: [
+          [cx, cy],
+          [cx + r * ux, cy + r * uy],
+          [cx + r * (ux + vx), cy + r * (uy + vy)],
+          [cx + r * vx, cy + r * vy]
+        ]
+      });
+      // Next arc's center keeps the endpoint and tangent continuous
+      const nextR = fibs[i + 1] !== undefined ? fibs[i + 1] : 0;
+      if (fibs[i + 1] !== undefined) {
+        cx += (r - nextR) * Math.cos(a1);
+        cy += (r - nextR) * Math.sin(a1);
+      }
+      angle = a1;
+    }
+    return arcs;
+  }
+
+  // ---------- Rendering ----------
+  function lerpColor(hexA, hexB, t) {
+    const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+    const ar = a >> 16 & 255, ag = a >> 8 & 255, ab = a & 255;
+    const br = b >> 16 & 255, bg = b >> 8 & 255, bb = b & 255;
+    const r = Math.round(ar + (br - ar) * t);
+    const g = Math.round(ag + (bg - ag) * t);
+    const bl = Math.round(ab + (bb - ab) * t);
+    return `rgb(${r},${g},${bl})`;
+  }
+
+  // Bounding box of the (rotated) geometry, sampled along arcs and squares
+  function boundingBox(arcs, rot, includeSquares) {
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const add = (x, y) => {
+      const rx = x * cos - y * sin, ry = x * sin + y * cos;
+      if (rx < minX) minX = rx; if (rx > maxX) maxX = rx;
+      if (ry < minY) minY = ry; if (ry > maxY) maxY = ry;
+    };
+    for (const a of arcs) {
+      const steps = 12;
+      for (let i = 0; i <= steps; i++) {
+        const phi = a.a0 + (a.a1 - a.a0) * i / steps;
+        add(a.cx + a.r * Math.cos(phi), a.cy + a.r * Math.sin(phi));
+      }
+      if (includeSquares) for (const [x, y] of a.square) add(x, y);
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
+  function makeTransforms(p, k, offX, offY) {
+    const cos = Math.cos(p.rotation), sin = Math.sin(p.rotation);
+    const tx = (x, y) => [x * cos - y * sin, x * sin + y * cos]; // world rotate
+    const toScreen = (x, y) => {
+      const [rx, ry] = tx(x, y);
+      return [rx * k + offX, ry * k + offY];
+    };
+    return { tx, toScreen };
+  }
+
+  // On-screen layout: fit and center the drawing in the window
+  function layout(p, w, h) {
+    const arcs = buildGeometry(p.terms, p.ccw);
+    const box = boundingBox(arcs, p.rotation, p.showSquares);
+    const bw = box.maxX - box.minX, bh = box.maxY - box.minY;
+    const margin = 0.88;
+    const k = Math.min(w / bw, h / bh) * margin * p.zoom;
+    // Screen offset so the bounding box is centered
+    const offX = w / 2 - (box.minX + bw / 2) * k;
+    const offY = h / 2 - (box.minY + bh / 2) * k;
+    return { arcs, k, offX, offY, ...makeTransforms(p, k, offX, offY) };
+  }
+
+  // Export layout: the image takes the shape of the drawing itself
+  // (landscape for a wide spiral, portrait for a tall one) plus a margin
+  function exportLayout(p) {
+    const arcs = buildGeometry(p.terms, p.ccw);
+    const box = boundingBox(arcs, p.rotation, p.showSquares);
+    const bw = box.maxX - box.minX, bh = box.maxY - box.minY;
+    // Keep the same pixel scale as on screen so zoom stays meaningful
+    const k = Math.min(window.innerWidth / bw, window.innerHeight / bh) * 0.88 * p.zoom;
+    const build = pad => {
+      const w = Math.ceil(bw * k + pad * 2);
+      const h = Math.ceil(bh * k + pad * 2);
+      const offX = pad - box.minX * k;
+      const offY = pad - box.minY * k;
+      return { arcs, k, offX, offY, w, h, ...makeTransforms(p, k, offX, offY) };
+    };
+    const pad = Math.max(24, p.lineWidth * 2);
+    let L = build(pad);
+    if (p.showNumbers) {
+      // Grow the margin if any label would stick out of the image
+      let overflow = 0;
+      for (const lb of numberLabels(p, L)) {
+        const halfW = lb.text.length * lb.size * 0.33 + lb.size * 0.2;
+        const halfH = lb.size * 0.75;
+        overflow = Math.max(overflow,
+          -(lb.x - halfW), (lb.x + halfW) - L.w,
+          -(lb.y - halfH), (lb.y + halfH) - L.h);
+      }
+      if (overflow > 0) L = build(pad + Math.ceil(overflow));
+    }
+    return L;
+  }
+
+  // Screen-space positions, sizes and text of the number labels
+  function numberLabels(p, L) {
+    const labels = [];
+    for (const a of L.arcs) {
+      const side = a.r * L.k; // square side in screen px
+      const size = p.scaleNumbers
+        ? Math.max(6, side * 0.38 * (p.fontSize / 15))
+        : p.fontSize;
+      let x, y;
+      if (p.numPlacement === "squares") {
+        const cx = (a.square[0][0] + a.square[1][0] + a.square[2][0] + a.square[3][0]) / 4;
+        const cy = (a.square[0][1] + a.square[1][1] + a.square[2][1] + a.square[3][1]) / 4;
+        [x, y] = L.toScreen(cx, cy);
+      } else {
+        // Arc midpoint, offset outward along the radial direction
+        const mid = (a.a0 + a.a1) / 2;
+        const [mx, my] = L.toScreen(a.cx + a.r * Math.cos(mid), a.cy + a.r * Math.sin(mid));
+        const [dx, dy] = L.tx(Math.cos(mid), Math.sin(mid));
+        const pad = size * 0.9 + p.lineWidth;
+        x = mx + dx * pad;
+        y = my + dy * pad;
+      }
+      labels.push({ x, y, size, text: String(a.fib) });
+    }
+    return labels;
+  }
+
+  // Renders the full picture into any 2D context with a given layout.
+  // isScreen: on screen a transparent background shows as a checkerboard;
+  // in exports it stays genuinely transparent.
+  function render(c, p, L, w, h, isScreen) {
+    // Background
+    if (p.bgTransparent) {
+      c.clearRect(0, 0, w, h);
+      if (isScreen) {
+        const s = 12;
+        for (let y = 0; y < h; y += s) {
+          for (let x = 0; x < w; x += s) {
+            c.fillStyle = ((x / s + y / s) & 1) ? "#2a2d35" : "#20232a";
+            c.fillRect(x, y, s, s);
+          }
+        }
+      }
+    } else {
+      c.fillStyle = p.colorBg;
+      c.fillRect(0, 0, w, h);
+    }
+
+    // Draw in a rotated + scaled space so arcs stay true circles
+    c.save();
+    c.translate(L.offX, L.offY);
+    c.scale(L.k, L.k);
+    c.rotate(p.rotation);
+
+    // Squares first (underneath the spiral)
+    if (p.showSquares) {
+      c.strokeStyle = p.colorSquares;
+      c.lineWidth = Math.max(1, p.lineWidth * 0.4) / L.k;
+      for (const a of L.arcs) {
+        c.beginPath();
+        c.moveTo(a.square[0][0], a.square[0][1]);
+        for (let i = 1; i < 4; i++) c.lineTo(a.square[i][0], a.square[i][1]);
+        c.closePath();
+        c.stroke();
+      }
+    }
+
+    // Spiral arcs with per-segment color gradient
+    c.lineCap = "round";
+    c.lineWidth = p.lineWidth / L.k;
+    const denom = Math.max(1, L.arcs.length - 1);
+    L.arcs.forEach((a, i) => {
+      c.strokeStyle = lerpColor(p.colorStart, p.colorEnd, i / denom);
+      c.beginPath();
+      c.arc(a.cx, a.cy, a.r, a.a0, a.a1, p.ccw);
+      c.stroke();
+    });
+    c.restore();
+
+    // Fibonacci numbers — drawn unrotated so they stay upright
+    if (p.showNumbers) {
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      for (const lb of numberLabels(p, L)) {
+        c.font = `600 ${lb.size}px "Segoe UI", system-ui, sans-serif`;
+        // Soft halo so numbers stay readable on any background —
+        // skipped when transparent, since there is no background color
+        if (!p.bgTransparent) {
+          c.lineWidth = Math.max(3, lb.size / 4);
+          c.strokeStyle = p.colorBg;
+          c.strokeText(lb.text, lb.x, lb.y);
+        }
+        c.fillStyle = p.colorNumbers;
+        c.fillText(lb.text, lb.x, lb.y);
+      }
+    }
+  }
+
+  function draw() {
+    const p = readParams();
+    const dpr = window.devicePixelRatio || 1;
+    const w = window.innerWidth, h = window.innerHeight;
+
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    render(ctx, p, layout(p, w, h), w, h, true);
+  }
+
+  // ---------- SVG export ----------
+  function buildSVG() {
+    const p = readParams();
+    const L = exportLayout(p);
+    const w = L.w, h = L.h;
+    const f = v => +v.toFixed(4);
+    const deg = f(p.rotation * 180 / Math.PI);
+    const parts = [];
+
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
+    if (!p.bgTransparent) {
+      parts.push(`<rect width="${w}" height="${h}" fill="${p.colorBg}"/>`);
+    }
+    parts.push(`<g transform="translate(${f(L.offX)} ${f(L.offY)}) scale(${f(L.k)}) rotate(${deg})">`);
+
+    if (p.showSquares) {
+      const sw = f(Math.max(1, p.lineWidth * 0.4) / L.k);
+      for (const a of L.arcs) {
+        const pts = a.square.map(pt => `${f(pt[0])},${f(pt[1])}`).join(" ");
+        parts.push(`<polygon points="${pts}" fill="none" stroke="${p.colorSquares}" stroke-width="${sw}"/>`);
+      }
+    }
+
+    const denom = Math.max(1, L.arcs.length - 1);
+    const sweep = p.ccw ? 0 : 1;
+    const sw = f(p.lineWidth / L.k);
+    L.arcs.forEach((a, i) => {
+      const x0 = f(a.cx + a.r * Math.cos(a.a0)), y0 = f(a.cy + a.r * Math.sin(a.a0));
+      const x1 = f(a.cx + a.r * Math.cos(a.a1)), y1 = f(a.cy + a.r * Math.sin(a.a1));
+      const color = lerpColor(p.colorStart, p.colorEnd, i / denom);
+      parts.push(`<path d="M ${x0} ${y0} A ${a.r} ${a.r} 0 0 ${sweep} ${x1} ${y1}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"/>`);
+    });
+    parts.push(`</g>`);
+
+    if (p.showNumbers) {
+      for (const lb of numberLabels(p, L)) {
+        const halo = f(Math.max(3, lb.size / 4));
+        // Vertical centering via em offset and a separate halo <text> underneath
+        // the fill — avoids dominant-baseline and paint-order, which many
+        // non-browser SVG viewers don't support
+        const attrs = `x="${f(lb.x)}" y="${f(lb.y + lb.size * 0.35)}" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="${f(lb.size)}" text-anchor="middle"`;
+        if (!p.bgTransparent) {
+          parts.push(`<text ${attrs} fill="none" stroke="${p.colorBg}" stroke-width="${halo}" stroke-linejoin="round">${lb.text}</text>`);
+        }
+        parts.push(`<text ${attrs} fill="${p.colorNumbers}">${lb.text}</text>`);
+      }
+    }
+
+    parts.push(`</svg>`);
+    return parts.join("\n");
+  }
+
+  // ---------- Wiring ----------
+  const inputs = document.querySelectorAll("#panel-body input, #panel-body select");
+  inputs.forEach(inp => inp.addEventListener("input", () => { updateValueLabels(); draw(); }));
+
+  el("reset").addEventListener("click", () => {
+    for (const [id, val] of Object.entries(defaults)) {
+      const node = el(id);
+      if (node.type === "checkbox") node.checked = val;
+      else node.value = val;
+    }
+    updateValueLabels();
+    draw();
+  });
+
+  el("download").addEventListener("click", () => {
+    // Render offscreen at 2x, cropped to the drawing's own aspect ratio
+    const p = readParams();
+    const L = exportLayout(p);
+    const scale = 2;
+    const off = document.createElement("canvas");
+    off.width = L.w * scale;
+    off.height = L.h * scale;
+    const octx = off.getContext("2d");
+    octx.setTransform(scale, 0, 0, scale, 0, 0);
+    render(octx, p, L, L.w, L.h);
+    const a = document.createElement("a");
+    a.download = "fibonacci-spiral.png";
+    a.href = off.toDataURL("image/png");
+    a.click();
+  });
+
+  el("download-svg").addEventListener("click", () => {
+    const blob = new Blob([buildSVG()], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.download = "fibonacci-spiral.svg";
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Collapsible panel — header click toggles
+  el("panel-header").addEventListener("click", () => {
+    el("panel").classList.toggle("collapsed");
+  });
+
+  window.addEventListener("resize", draw);
+
+  updateValueLabels();
+  draw();
+})();
+</script>
+
+</body>
+</html>

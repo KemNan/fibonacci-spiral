@@ -1,0 +1,25 @@
+# Local archive / scratch — not part of the project
+zzOLD/
+
+# OS cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Generated exports (in case you save spirals into the repo folder)
+*.png
+*.svg
+# ...but keep the documentation assets
+!docs/**

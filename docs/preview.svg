@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="929" height="592" viewBox="0 0 929 592">
+<rect width="929" height="592" fill="#14161c"/>
+<g transform="translate(656.809 172.3146) scale(9.8876) rotate(0)">
+<polygon points="0,0 1,0 1,1 0,1" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="0,0 0,1 -1,1 -1,0" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="1,0 -1,0 -1,-2 1,-2" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="1,1 1,-2 4,-2 4,1" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="-1,1 4,1 4,6 -1,6" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="-1,-2 -1,6 -9,6 -9,-2" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="4,-2 -9,-2 -9,-15 4,-15" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="4,6 4,-15 25,-15 25,6" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="-9,6 25,6 25,40 -9,40" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<polygon points="-9,-15 -9,40 -64,40 -64,-15" fill="none" stroke="#3a4152" stroke-width="0.1214"/>
+<path d="M 1 0 A 1 1 0 0 1 0 1" fill="none" stroke="rgb(255,179,64)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M 0 1 A 1 1 0 0 1 -1 0" fill="none" stroke="rgb(235,177,85)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M -1 0 A 2 2 0 0 1 1 -2" fill="none" stroke="rgb(216,174,106)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M 1 -2 A 3 3 0 0 1 4 1" fill="none" stroke="rgb(196,172,128)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M 4 1 A 5 5 0 0 1 -1 6" fill="none" stroke="rgb(177,169,149)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M -1 6 A 8 8 0 0 1 -9 -2" fill="none" stroke="rgb(157,167,170)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M -9 -2 A 13 13 0 0 1 4 -15" fill="none" stroke="rgb(138,164,191)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M 4 -15 A 21 21 0 0 1 25 6" fill="none" stroke="rgb(118,162,213)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M 25 6 A 34 34 0 0 1 -9 40" fill="none" stroke="rgb(99,159,234)" stroke-width="0.3034" stroke-linecap="round"/>
+<path d="M -9 40 A 55 55 0 0 1 -64 -15" fill="none" stroke="rgb(79,157,255)" stroke-width="0.3034" stroke-linecap="round"/>
+</g>
+<text x="661.7528" y="182.5084" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">1</text>
+<text x="661.7528" y="182.5084" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">1</text>
+<text x="651.8652" y="182.5084" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">1</text>
+<text x="651.8652" y="182.5084" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">1</text>
+<text x="656.809" y="167.677" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">2</text>
+<text x="656.809" y="167.677" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">2</text>
+<text x="681.5281" y="172.6208" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">3</text>
+<text x="681.5281" y="172.6208" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">3</text>
+<text x="671.6404" y="212.1713" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">5</text>
+<text x="671.6404" y="212.1713" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">5</text>
+<text x="607.3708" y="197.3399" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">8</text>
+<text x="607.3708" y="197.3399" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">8</text>
+<text x="632.0899" y="93.5197" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">13</text>
+<text x="632.0899" y="93.5197" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">13</text>
+<text x="800.1798" y="133.0702" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">21</text>
+<text x="800.1798" y="133.0702" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">21</text>
+<text x="735.9101" y="404.9803" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">34</text>
+<text x="735.9101" y="404.9803" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">34</text>
+<text x="295.9101" y="301.1601" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="none" stroke="#14161c" stroke-width="3.75" stroke-linejoin="round">55</text>
+<text x="295.9101" y="301.1601" font-family="Segoe UI, system-ui, sans-serif" font-weight="600" font-size="15" text-anchor="middle" fill="#ffffff">55</text>
+</svg>
